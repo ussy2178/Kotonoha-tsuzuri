@@ -1,0 +1,21 @@
+{
+  "name": "ことのは綴り",
+  "short_name": "ことのは",
+  "description": "画像から情景に寄り添う俳句を見つける",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F5F2",
+  "theme_color": "#2B2B2B",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

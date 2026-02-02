@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'ことのは綴り',
   description: '画像から俳句を検索するアプリ',
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({
