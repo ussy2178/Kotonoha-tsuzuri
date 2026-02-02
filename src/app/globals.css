@@ -1,0 +1,17 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500;600&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* 和紙・墨の色味 */
+  --color-washi: #faf8f5;
+  --color-washi-subtle: #f5f3ee;
+  --color-washi-border: #e8e5df;
+  --color-ink: #3d3a35;
+  --color-ink-muted: #6b6560;
+  --color-ink-light: #8a8580;
+  --color-ink-faint: #a39e96;
+  /* 明朝寄りフォント */
+  --font-mincho: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+}
+
+/* ベース：和風タイポグラフィ（font-mincho は layout の body に適用） */
