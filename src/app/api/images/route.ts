@@ -1,30 +1,28 @@
 import { NextResponse } from 'next/server'
-import { jobStore } from '@/lib/store/jobStore'
 import { runHaikuPipeline } from '@/lib/pipeline/haikuPipeline'
 
 export async function POST(req: Request) {
-  const formData = await req.formData()
-  const file = formData.get('image')
+  try {
+    const formData = await req.formData()
+    const file = formData.get('image')
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: '画像がありません' }, { status: 400 })
+    if (!(file instanceof File)) {
+      return NextResponse.json({ errorMessage: '画像がありません' }, { status: 400 })
+    }
+
+    // ✅ 同期で最後まで処理して結果を返す
+    const result = await runHaikuPipeline(file)
+
+    // result の形が不明なので、まずはそのまま返す（後で整える）
+    // 期待形: { analysis, searchResult }
+    return NextResponse.json(result, { status: 200 })
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Unknown error'
+    console.error('[POST /api/images] error:', message)
+
+    return NextResponse.json(
+      { errorMessage: message || '検索に失敗しました' },
+      { status: 500 }
+    )
   }
-
-  // ★ ① job を作る（jobId はここで確定）
-  const job = jobStore.createJob()
-
-  // 👇 awaitしない（fire-and-forget）
-  runHaikuPipeline(file)
-    .then((result) => {
-      jobStore.setSuccess(job.id, result)
-    })
-    .catch((e) => {
-      if (e.message.includes('タイムアウト')) {
-        jobStore.setTimeout(job.id)
-      } else {
-        jobStore.setError(job.id, e.message)
-      }
-    })
-
-// ★ ③ jobId を即返す（検索中画面に行ける）
-return NextResponse.json({ jobId: job.id })}
+}
