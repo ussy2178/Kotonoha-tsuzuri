@@ -9,7 +9,6 @@ export async function GET(
   const { jobId } = await params
 
   const job = jobStore.getJob(jobId)
-  // console.log('[GET API] job.searchResult:', job?.searchResult)
 
   if (!job) {
     return NextResponse.json(
@@ -22,6 +21,15 @@ export async function GET(
   const elapsed = Date.now() - job.startedAt
   if (elapsed > 30000 && job.status === JobStatus.Processing) {
     job.status = JobStatus.Timeout
+  }
+
+  // ★★★ ここが今回の本命修正 ★★★
+  if (
+    job.status === JobStatus.Processing &&
+    job.analysis &&
+    job.searchResult
+  ) {
+    job.status = JobStatus.Success
   }
 
   return NextResponse.json({
