@@ -2,13 +2,26 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { confidenceMessage } from '@/lib/confidenceMessage'
-import { ImageAnalysisResult, SearchResult } from '@/lib/types'
+import { Haiku, ImageAnalysisResult, SearchResult, Season } from '@/lib/types'
 
 /** 英語混在チェック（UI用ガード） */
 function containsEnglish(text: string): boolean {
   return /[a-zA-Z]/.test(text)
+}
+
+const seasonLabel: Record<Exclude<Season, 'unknown'>, string> = {
+  spring: '春',
+  summer: '夏',
+  autumn: '秋',
+  winter: '冬',
+  newyear: '新年',
+  none: '季語なし',
+}
+
+function toSeasonLabel(season: Season | null | undefined): string {
+  if (!season || season === 'unknown') return '季節不明'
+  return seasonLabel[season]
 }
 
 export default function ResultPage() {
@@ -17,6 +30,11 @@ export default function ResultPage() {
   const [analysis, setAnalysis] = useState<ImageAnalysisResult | null>(null)
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null)
   const [visibleCount, setVisibleCount] = useState(3)
+  const [editingHaikuId, setEditingHaikuId] = useState<string | null>(null)
+  const [kigoText, setKigoText] = useState('')
+  const [season, setSeason] = useState<Exclude<Season, 'unknown'>>('spring')
+  const [savingKigo, setSavingKigo] = useState(false)
+  const [kigoError, setKigoError] = useState<string | null>(null)
 
   /** 初回マウント時に sessionStorage から結果を復元 */
   useEffect(() => {
@@ -62,8 +80,133 @@ export default function ResultPage() {
       ? analysis.keywords
       : null
 
+  const openKigoModal = (haikuId: string) => {
+    setEditingHaikuId(haikuId)
+    setKigoText('')
+    setSeason('spring')
+    setKigoError(null)
+  }
+
+  const closeKigoModal = () => {
+    setEditingHaikuId(null)
+    setKigoText('')
+    setSeason('spring')
+    setKigoError(null)
+  }
+
+  const handleSaveKigo = async () => {
+    if (!editingHaikuId) return
+    if (!kigoText.trim()) {
+      setKigoError('季語を入力してください')
+      return
+    }
+
+    setSavingKigo(true)
+    setKigoError(null)
+
+    try {
+      const response = await fetch(`/api/haiku/${editingHaikuId}/kigo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kigo_text: kigoText.trim(),
+          season,
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        const message =
+          payload?.errorMessage ?? '季語の保存に失敗しました'
+        throw new Error(message)
+      }
+
+      const updatedHaiku = (await response.json()) as Haiku
+
+      setSearchResult(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          haikus: prev.haikus.map(h =>
+            h.id === updatedHaiku.id ? { ...h, ...updatedHaiku } : h
+          ),
+        }
+      })
+
+      closeKigoModal()
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : '季語の保存に失敗しました'
+      setKigoError(message)
+    } finally {
+      setSavingKigo(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-washi text-ink">
+      {editingHaikuId && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-md bg-washi border border-washi-border p-6 space-y-4">
+            <h3 className="text-sm tracking-wide text-ink">季語を設定する</h3>
+
+            <div className="space-y-2">
+              <label className="text-xs text-ink-light tracking-wide">
+                季語テキスト
+              </label>
+              <input
+                type="text"
+                value={kigoText}
+                onChange={(e) => setKigoText(e.target.value)}
+                className="w-full rounded-md border border-washi-border bg-white/70 px-3 py-2 text-sm"
+                placeholder="例：桜"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs text-ink-light tracking-wide">
+                季節
+              </label>
+              <select
+                value={season}
+                onChange={(e) =>
+                  setSeason(e.target.value as Exclude<Season, 'unknown'>)
+                }
+                className="w-full rounded-md border border-washi-border bg-white/70 px-3 py-2 text-sm"
+              >
+                <option value="spring">春</option>
+                <option value="summer">夏</option>
+                <option value="autumn">秋</option>
+                <option value="winter">冬</option>
+                <option value="newyear">新年</option>
+                <option value="none">季語なし</option>
+              </select>
+            </div>
+
+            {kigoError && (
+              <p className="text-xs text-red-600 tracking-wide">{kigoError}</p>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={closeKigoModal}
+                disabled={savingKigo}
+                className="px-3 py-1.5 text-xs rounded-md border border-washi-border text-ink-light hover:opacity-80 disabled:opacity-60"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSaveKigo}
+                disabled={savingKigo}
+                className="px-3 py-1.5 text-xs rounded-md bg-ink text-washi hover:opacity-90 disabled:opacity-60"
+              >
+                {savingKigo ? '保存中…' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-2xl mx-auto px-4 py-14">
 
         {/* タイトル */}
@@ -123,6 +266,20 @@ export default function ResultPage() {
                   <p className="text-right text-xs text-ink-light tracking-wider">
                     {haiku.author}
                   </p>
+                  <div className="mt-4 flex justify-end">
+                    {haiku.kigo_text ? (
+                      <span className="text-xs text-gray-500 tracking-wide">
+                        季語｜{haiku.kigo_text}
+                      </span>
+                    ) : (
+                      <button
+                        className="text-xs text-gray-400 underline hover:text-gray-600 transition"
+                        onClick={() => openKigoModal(haiku.id)}
+                      >
+                        季語を登録する
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
 

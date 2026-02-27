@@ -19,10 +19,26 @@ export type JobId = string
 /**
  * 俳句データ
  */
+export type Season =
+  | 'spring'
+  | 'summer'
+  | 'autumn'
+  | 'winter'
+  | 'newyear'
+  | 'none'
+  | 'unknown'
+
 export type Haiku = {
   id: string
   text: string
-  author: string
+  author?: string | null
+
+  kigo_text?: string | null
+  season?: Season | null
+  kigo_confidence?: number | null
+  kigo_decided_by?: 'auto' | 'manual' | null
+  kigo_source?: string | null
+
   analysis?: ImageAnalysisResult
   embedding_json?: EmbeddingVector
   embedding?: EmbeddingVector
